@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+
+<plugin name="Zongsoft.Externals.Alimap"
+        title="Zongsoft.Externals.Alimap Plugin"
+        author="Zongsoft Corporation"
+        version="1.0"
+        description="Create by: Popeye Zhong at 2017-11-11" >
+
+	<manifest>
+		<assemblies>
+			<assembly name="Zongsoft.Externals.Alimap" />
+		</assemblies>
+	</manifest>
+
+	<extension path="/Workspace/Externals">
+		<object name="AlimapProvider" configuration="{opt:/Externals/Alimap/General}" type="Zongsoft.Externals.Alimap.AlimapClientProvider, Zongsoft.Externals.Alimap" />
+	</extension>
+
+	<extension path="/Workbench/Executor/Commands">
+		<object name="Alimap">
+			<alimap.command>
+				<object provider="{path:/Workspace/Externals/AlimapProvider}" type="Zongsoft.Externals.Alimap.Commands.AlimapCommand, Zongsoft.Externals.Alimap" />
+			</alimap.command>
+
+			<object name="Table">
+				<object name="Add" type="Zongsoft.Externals.Alimap.Commands.TableAddCommand, Zongsoft.Externals.Alimap" />
+			</object>
+
+			<object name="Data">
+				<object name="Get" type="Zongsoft.Externals.Alimap.Commands.DataGetCommand, Zongsoft.Externals.Alimap" />
+				<object name="Set" type="Zongsoft.Externals.Alimap.Commands.DataSetCommand, Zongsoft.Externals.Alimap" />
+				<object name="Add" type="Zongsoft.Externals.Alimap.Commands.DataAddCommand, Zongsoft.Externals.Alimap" />
+				<object name="Remove" type="Zongsoft.Externals.Alimap.Commands.DataRemoveCommand, Zongsoft.Externals.Alimap" />
+			</object>
+		</object>
+	</extension>
+</plugin>

@@ -1,0 +1,3 @@
+src/Zongsoft.Externals.Alimap.plugin
+src/Zongsoft.Externals.Alimap.option
+src/bin/$(Edition)/Zongsoft.Externals.Alimap.*

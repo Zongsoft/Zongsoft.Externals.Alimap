@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+
+<options>
+	<option path="/Externals/Alimap">
+		<general general.type="Zongsoft.Externals.Alimap.Options.Configuration.GeneralConfiguration, Zongsoft.Externals.Alimap">
+			<apps default="">
+				<app name="Your app key" value="Your app secret" />
+			</apps>
+		</general>
+	</option>
+</options>
