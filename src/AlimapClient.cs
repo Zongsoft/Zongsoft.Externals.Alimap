@@ -44,7 +44,6 @@ namespace Zongsoft.Externals.Alimap
 
 		#region 成员字段
 		private string _appId;
-		private Options.IConfiguration _configuration;
 		#endregion
 
 		#region 私有变量
@@ -77,19 +76,6 @@ namespace Zongsoft.Externals.Alimap
 					throw new ArgumentNullException();
 
 				_appId = value;
-			}
-		}
-
-		[Zongsoft.Services.ServiceDependency]
-		public Options.IConfiguration Configuration
-		{
-			get
-			{
-				return _configuration;
-			}
-			set
-			{
-				_configuration = value ?? throw new ArgumentNullException();
 			}
 		}
 		#endregion
