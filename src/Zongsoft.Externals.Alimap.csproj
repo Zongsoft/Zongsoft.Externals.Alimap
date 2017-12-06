@@ -51,9 +51,11 @@
     <Compile Include="CoordinateType.cs" />
     <Compile Include="DataMapping.cs" />
     <Compile Include="AlimapClient.cs" />
+    <Compile Include="Messaging\TopicExecutionHandler.cs" />
     <Compile Include="Options\Configuration\GeneralConfiguration.cs" />
     <Compile Include="Options\IAppSettings.cs" />
     <Compile Include="Options\IConfiguration.cs" />
+    <Compile Include="Options\IHandlerOption.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utility.cs" />
   </ItemGroup>

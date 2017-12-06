@@ -6,6 +6,14 @@
 			<apps default="">
 				<app name="Your app key" value="Your app secret" />
 			</apps>
+
+			<handlers>
+				<handler name="point"
+								 appId=""
+								 tableId=""
+								 mapping="id=PointId|address=AddressDetail"
+								 coordinate="alimap" />
+			</handlers>
 		</general>
 	</option>
 </options>

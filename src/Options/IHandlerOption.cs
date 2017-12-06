@@ -18,20 +18,41 @@
  */
 
 using System;
-using System.Collections.Generic;
 
 namespace Zongsoft.Externals.Alimap.Options
 {
-	public interface IConfiguration
+	public interface IHandlerOption
 	{
-		IAppSettings Apps
+		string Name
 		{
 			get;
+			set;
 		}
 
-		IReadOnlyDictionary<string, IHandlerOption> Handlers
+		string AppId
 		{
 			get;
+			set;
 		}
+
+		string TableId
+		{
+			get;
+			set;
+		}
+
+		string Mapping
+		{
+			get;
+			set;
+		}
+
+		CoordinateType Coordinate
+		{
+			get;
+			set;
+		}
+
+		DataMapping? GetMapping();
 	}
 }

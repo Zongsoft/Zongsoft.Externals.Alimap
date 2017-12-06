@@ -18,6 +18,8 @@
  */
 
 using System;
+using System.Linq;
+using System.Collections.Generic;
 
 using Zongsoft.Options;
 using Zongsoft.Options.Configuration;
@@ -28,7 +30,10 @@ namespace Zongsoft.Externals.Alimap.Options.Configuration
 	{
 		#region 常量定义
 		private const string XML_APP_ELEMENT = "app";
+		private const string XML_HANDLER_ELEMENT = "handler";
+
 		private const string XML_APPS_COLLECTION = "apps";
+		private const string XML_HANDLERS_COLLECTION = "handlers";
 		#endregion
 
 		#region 公共属性
@@ -40,6 +45,15 @@ namespace Zongsoft.Externals.Alimap.Options.Configuration
 				return (AppSettingsCollection)this[XML_APPS_COLLECTION];
 			}
 		}
+
+		[OptionConfigurationProperty(XML_HANDLERS_COLLECTION, ElementName = XML_HANDLER_ELEMENT)]
+		public HandlerElementCollection Handlers
+		{
+			get
+			{
+				return (HandlerElementCollection)this[string.Empty];
+			}
+		}
 		#endregion
 
 		#region 显式实现
@@ -48,6 +62,14 @@ namespace Zongsoft.Externals.Alimap.Options.Configuration
 			get
 			{
 				return this.Apps;
+			}
+		}
+
+		IReadOnlyDictionary<string, IHandlerOption> IConfiguration.Handlers
+		{
+			get
+			{
+				return this.Handlers;
 			}
 		}
 		#endregion
@@ -71,20 +93,153 @@ namespace Zongsoft.Externals.Alimap.Options.Configuration
 			{
 				get
 				{
-					OptionConfigurationProperty property;
-
-					if(this.Properties.TryGetValue(XML_DEFAULT_ATTRIBUTE, out property))
-						return (string)this[property];
-
-					return null;
+					return (string)this.GetAttributeValue(XML_DEFAULT_ATTRIBUTE);
 				}
 				set
 				{
+					this.SetAttributeValue(XML_DEFAULT_ATTRIBUTE, value);
+				}
+			}
+			#endregion
+		}
 
-					OptionConfigurationProperty property;
+		public class HandlerElement : OptionConfigurationElement, IHandlerOption
+		{
+			#region 常量定义
+			private const string XML_NAME_ATTRIBUTE = "name";
+			private const string XML_APPID_ATTRIBUTE = "appId";
+			private const string XML_TABLEID_ATTRIBUTE = "tableId";
+			private const string XML_MAPPING_ATTRIBUTE = "mapping";
+			private const string XML_COORDINATE_ATTRIBUTE = "coordinate";
+			#endregion
 
-					if(this.Properties.TryGetValue(XML_DEFAULT_ATTRIBUTE, out property))
-						this[property] = value;
+			#region 公共属性
+			[OptionConfigurationProperty(XML_NAME_ATTRIBUTE, OptionConfigurationPropertyBehavior.IsKey)]
+			public string Name
+			{
+				get
+				{
+					return (string)this[XML_NAME_ATTRIBUTE];
+				}
+				set
+				{
+					this[XML_NAME_ATTRIBUTE] = value;
+				}
+			}
+
+			[OptionConfigurationProperty(XML_APPID_ATTRIBUTE)]
+			public string AppId
+			{
+				get
+				{
+					return (string)this[XML_APPID_ATTRIBUTE];
+				}
+				set
+				{
+					this[XML_APPID_ATTRIBUTE] = value;
+				}
+			}
+
+			[OptionConfigurationProperty(XML_TABLEID_ATTRIBUTE)]
+			public string TableId
+			{
+				get
+				{
+					return (string)this[XML_TABLEID_ATTRIBUTE];
+				}
+				set
+				{
+					this[XML_TABLEID_ATTRIBUTE] = value;
+				}
+			}
+
+			[OptionConfigurationProperty(XML_MAPPING_ATTRIBUTE)]
+			public string Mapping
+			{
+				get
+				{
+					return (string)this[XML_MAPPING_ATTRIBUTE];
+				}
+				set
+				{
+					this[XML_MAPPING_ATTRIBUTE] = value;
+				}
+			}
+
+			[OptionConfigurationProperty(XML_COORDINATE_ATTRIBUTE)]
+			public CoordinateType Coordinate
+			{
+				get
+				{
+					return (CoordinateType)this[XML_COORDINATE_ATTRIBUTE];
+				}
+				set
+				{
+					this[XML_COORDINATE_ATTRIBUTE] = value;
+				}
+			}
+			#endregion
+
+			#region 公共方法
+			public DataMapping? GetMapping()
+			{
+				return Zongsoft.Externals.Alimap.DataMapping.Resolve(this.Mapping);
+			}
+			#endregion
+		}
+
+		public class HandlerElementCollection : OptionConfigurationElementCollection<HandlerElement>, IReadOnlyDictionary<string, IHandlerOption>
+		{
+			#region 重写方法
+			protected override OptionConfigurationElement CreateNewElement()
+			{
+				return new HandlerElement();
+			}
+
+			protected override string GetElementKey(OptionConfigurationElement element)
+			{
+				return ((HandlerElement)element).Name;
+			}
+			#endregion
+
+			#region 显式实现
+			IHandlerOption IReadOnlyDictionary<string, IHandlerOption>.this[string key] => throw new NotImplementedException();
+
+			IEnumerable<string> IReadOnlyDictionary<string, IHandlerOption>.Keys
+			{
+				get
+				{
+					return this.InnerDictionary.Keys;
+				}
+			}
+
+			IEnumerable<IHandlerOption> IReadOnlyDictionary<string, IHandlerOption>.Values
+			{
+				get
+				{
+					return this.InnerDictionary.Values.Cast<IHandlerOption>();
+				}
+			}
+
+			bool IReadOnlyDictionary<string, IHandlerOption>.TryGetValue(string key, out IHandlerOption value)
+			{
+				OptionConfigurationElement element;
+
+				if(this.InnerDictionary.TryGetValue(key, out element))
+				{
+					value = (IHandlerOption)element;
+					return true;
+				}
+
+				value = null;
+				return false;
+			}
+
+			IEnumerator<KeyValuePair<string, IHandlerOption>> IEnumerable<KeyValuePair<string, IHandlerOption>>.GetEnumerator()
+			{
+				foreach(var entry in this.InnerDictionary)
+				{
+					yield return new KeyValuePair<string, IHandlerOption>(entry.Key, (IHandlerOption)entry.Value);
 				}
 			}
 			#endregion

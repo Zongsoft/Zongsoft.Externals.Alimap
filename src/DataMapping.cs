@@ -35,12 +35,15 @@ namespace Zongsoft.Externals.Alimap
 			if(string.IsNullOrEmpty(text))
 				return null;
 
-			var parts = text.Split(';', '|');
+			var parts = text.Split(';', '|', ',');
 			var keys = new string[5];
 
 			foreach(var part in parts)
 			{
 				var index = part.IndexOf('=');
+
+				if(index < 0)
+					index = part.IndexOf(':');
 
 				if(index > 0 && index < part.Length - 1)
 				{
