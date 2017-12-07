@@ -28,10 +28,5 @@ namespace Zongsoft.Externals.Alimap.Options
 		{
 			get;
 		}
-
-		IReadOnlyDictionary<string, IHandlerOption> Handlers
-		{
-			get;
-		}
 	}
 }
