@@ -42,6 +42,7 @@
     <Compile Include="AlimapClientProvider.cs" />
     <Compile Include="AlimapException.cs" />
     <Compile Include="AlimapResult.cs" />
+    <Compile Include="Commands\DataFindCommand.cs" />
     <Compile Include="Commands\TableAddCommand.cs" />
     <Compile Include="Commands\DataRemoveCommand.cs" />
     <Compile Include="Commands\DataSetCommand.cs" />
@@ -49,7 +50,6 @@
     <Compile Include="Commands\DataAddCommand.cs" />
     <Compile Include="Commands\AlimapCommand.cs" />
     <Compile Include="CoordinateType.cs" />
-    <Compile Include="DataMapping.cs" />
     <Compile Include="AlimapClient.cs" />
     <Compile Include="Options\Configuration\GeneralConfiguration.cs" />
     <Compile Include="Options\IAppSettings.cs" />

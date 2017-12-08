@@ -53,7 +53,7 @@ namespace Zongsoft.Externals.Alimap.Commands
 			var provider = AlimapCommand.GetProvider(context.CommandNode);
 
 			if(provider == null)
-				throw new CommandException("Obtain the alimap provider failed.");
+				throw new CommandException("No found the alimap provider for the command.");
 
 			//获取指定应用编号对应的地图客户端
 			var client = provider.Get(context.Expression.Options.GetValue<string>(APP_COMMAND_OPTION));
@@ -62,15 +62,27 @@ namespace Zongsoft.Externals.Alimap.Commands
 				return null;
 
 			if(context.Expression.Arguments.Length == 1)
+			{
+				ulong id;
+
+				if(!ulong.TryParse(context.Expression.Arguments[0], out id))
+					throw new CommandException(string.Format("Invalid '{0}' argument value, it must be a integer.", context.Expression.Arguments[0]));
+
 				return Utility.ExecuteTask(() => client.GetAsync(
-					context.Expression.Options.GetValue<string>(TABLE_COMMAND_OPTION),
-					context.Expression.Arguments[0]));
+					context.Expression.Options.GetValue<string>(TABLE_COMMAND_OPTION), id));
+			}
 
 			var result = new IDictionary<string, object>[context.Expression.Arguments.Length];
 
 			for(int i = 0; i < context.Expression.Arguments.Length; i++)
 			{
-				result[i] = Utility.ExecuteTask(() => client.GetAsync(context.Expression.Options.GetValue<string>(TABLE_COMMAND_OPTION), context.Expression.Arguments[i]));
+				ulong id;
+
+				if(!ulong.TryParse(context.Expression.Arguments[i], out id))
+					throw new CommandException(string.Format("Invalid '{0}' argument value, it must be a integer.", context.Expression.Arguments[i]));
+
+				result[i] = Utility.ExecuteTask(() => client.GetAsync(
+					context.Expression.Options.GetValue<string>(TABLE_COMMAND_OPTION), id));
 			}
 
 			return result;

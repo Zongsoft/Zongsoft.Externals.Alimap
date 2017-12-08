@@ -24,6 +24,54 @@ namespace Zongsoft.Externals.Alimap
 {
 	internal static class Utility
 	{
+		private static readonly IDictionary<string, IDictionary<string, string>> _mappingCache = new Dictionary<string, IDictionary<string, string>>();
+
+		public static string GetMapping(string mappingString, string key, string defaultKey = null)
+		{
+			var mapping = GetMapping(mappingString);
+
+			if(mapping != null && mapping.TryGetValue(key, out var value))
+				return string.IsNullOrWhiteSpace(value) ? defaultKey : value.Trim();
+
+			return defaultKey;
+		}
+
+		public static IDictionary<string, string> GetMapping(string mappingString)
+		{
+			if(string.IsNullOrEmpty(mappingString))
+				return null;
+
+			IDictionary<string, string> mapping;
+
+			if(_mappingCache.TryGetValue(mappingString, out mapping))
+				return mapping;
+
+			lock(_mappingCache)
+			{
+				if(_mappingCache.TryGetValue(mappingString, out mapping))
+					return mapping;
+
+				var parts = mappingString.Split(';', '|');
+				mapping = new Dictionary<string, string>(parts.Length, StringComparer.OrdinalIgnoreCase);
+
+				foreach(var part in parts)
+				{
+					if(string.IsNullOrWhiteSpace(part))
+						continue;
+
+					var pair = part.Split(':', '=');
+					var key = pair[0].Trim();
+
+					mapping[key] = pair.Length > 1 ? pair[1].Trim() : key;
+				}
+
+				//将解析完成的映射字典加入到缓存容器中
+				_mappingCache.Add(mappingString, mapping);
+
+				return mapping;
+			}
+		}
+
 		#region 异步处理
 		/// <summary>
 		/// 异步包装方法：确保在Web程序中不会被异步操作的并发线程乱入。

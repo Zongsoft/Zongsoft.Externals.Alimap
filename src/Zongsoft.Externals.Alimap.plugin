@@ -30,6 +30,7 @@
 				<object name="Get" type="Zongsoft.Externals.Alimap.Commands.DataGetCommand, Zongsoft.Externals.Alimap" />
 				<object name="Set" type="Zongsoft.Externals.Alimap.Commands.DataSetCommand, Zongsoft.Externals.Alimap" />
 				<object name="Add" type="Zongsoft.Externals.Alimap.Commands.DataAddCommand, Zongsoft.Externals.Alimap" />
+				<object name="Find" type="Zongsoft.Externals.Alimap.Commands.DataFindCommand, Zongsoft.Externals.Alimap" />
 				<object name="Remove" type="Zongsoft.Externals.Alimap.Commands.DataRemoveCommand, Zongsoft.Externals.Alimap" />
 			</object>
 		</object>

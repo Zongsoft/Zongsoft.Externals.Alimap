@@ -3,7 +3,7 @@
 <options>
 	<option path="/Externals/Alimap">
 		<general general.type="Zongsoft.Externals.Alimap.Options.Configuration.GeneralConfiguration, Zongsoft.Externals.Alimap">
-			<apps default="">
+			<apps default="Default app key">
 				<app name="Your app key" value="Your app secret" />
 			</apps>
 		</general>

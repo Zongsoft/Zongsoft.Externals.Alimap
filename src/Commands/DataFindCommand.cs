@@ -24,19 +24,25 @@ using Zongsoft.Services;
 
 namespace Zongsoft.Externals.Alimap.Commands
 {
-	[CommandOption(APP_COMMAND_OPTION, typeof(string), Description = "${Text.CommandOption.App.Description}")]
-	public class TableAddCommand : CommandBase<CommandContext>
+	[CommandOption(COMMAND_APP_OPTION, typeof(string), Description = "${Text.CommandOption.App.Description}")]
+	[CommandOption(COMMAND_TABLE_OPTION, typeof(string), Description = "${Text.CommandOption.Table.Description}")]
+	[CommandOption(COMMAND_PAGEINDEX_OPTION, typeof(int), DefaultValue = 1, Description = "${Text.CommandOption.PageIndex.Description}")]
+	[CommandOption(COMMAND_PAGESIZE_OPTION, typeof(int), DefaultValue = 20, Description = "${Text.CommandOption.PageSize.Description}")]
+	public class DataFindCommand : CommandBase<CommandContext>
 	{
 		#region 常量定义
-		private const string APP_COMMAND_OPTION = "app";
+		private const string COMMAND_APP_OPTION = "app";
+		private const string COMMAND_TABLE_OPTION = "table";
+		private const string COMMAND_PAGEINDEX_OPTION = "pageIndex";
+		private const string COMMAND_PAGESIZE_OPTION = "pageSize";
 		#endregion
 
 		#region 构造函数
-		public TableAddCommand() : base("Add")
+		public DataFindCommand() : base("Find")
 		{
 		}
 
-		public TableAddCommand(string name) : base(name)
+		public DataFindCommand(string name) : base(name)
 		{
 		}
 		#endregion
@@ -54,19 +60,19 @@ namespace Zongsoft.Externals.Alimap.Commands
 				throw new CommandException("No found the alimap provider for the command.");
 
 			//获取指定应用编号对应的地图客户端
-			var client = provider.Get(context.Expression.Options.GetValue<string>(APP_COMMAND_OPTION));
+			var client = provider.Get(context.Expression.Options.GetValue<string>(COMMAND_APP_OPTION));
 
 			if(client == null)
 				return null;
 
-			var result = new AlimapResult[context.Expression.Arguments.Length];
+			if(context.Expression.Arguments.Length != 1)
+				throw new CommandException("The command count of arguments must be zero.");
 
-			for(int i = 0; i < context.Expression.Arguments.Length; i++)
-			{
-				result[i] = Utility.ExecuteTask(() => client.CreateTableAsync(context.Expression.Arguments[i]));
-			}
-
-			return result;
+			return Utility.ExecuteTask(() => client.FindAsync(
+				context.Expression.Options.GetValue<string>(COMMAND_TABLE_OPTION),
+				context.Expression.Arguments[0],
+				context.Expression.Options.GetValue<int>(COMMAND_PAGEINDEX_OPTION),
+				context.Expression.Options.GetValue<int>(COMMAND_PAGESIZE_OPTION)));
 		}
 		#endregion
 	}

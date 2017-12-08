@@ -57,7 +57,7 @@ namespace Zongsoft.Externals.Alimap.Commands
 			var provider = AlimapCommand.GetProvider(context.CommandNode);
 
 			if(provider == null)
-				throw new CommandException("Obtain the alimap provider failed.");
+				throw new CommandException("No found the alimap provider for the command.");
 
 			//获取指定应用编号对应的地图客户端
 			var client = provider.Get(context.Expression.Options.GetValue<string>(APP_COMMAND_OPTION));
@@ -68,7 +68,7 @@ namespace Zongsoft.Externals.Alimap.Commands
 			return Utility.ExecuteTask(() => client.CreateDataAsync(
 				context.Expression.Options.GetValue<string>(TABLE_COMMAND_OPTION),
 				context.Parameter as IDictionary<string, object>,
-				DataMapping.Resolve(context.Expression.Options.GetValue<string>(MAPPING_COMMAND_OPTION)),
+				context.Expression.Options.GetValue<string>(MAPPING_COMMAND_OPTION),
 				context.Expression.Options.GetValue<CoordinateType>(COORDINATE_COMMAND_OPTION)));
 		}
 		#endregion
