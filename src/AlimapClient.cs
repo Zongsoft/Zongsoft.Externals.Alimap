@@ -56,6 +56,7 @@ namespace Zongsoft.Externals.Alimap
 		#region 私有变量
 		private string _secret;
 		private readonly HttpClient _http;
+		private Zongsoft.Runtime.Serialization.TextSerializationSettings _serializationSettings;
 		#endregion
 
 		#region 构造函数
@@ -67,6 +68,11 @@ namespace Zongsoft.Externals.Alimap
 			_appId = appId;
 			_secret = secret;
 			_http = new HttpClient();
+
+			_serializationSettings = new Runtime.Serialization.TextSerializationSettings()
+			{
+				SerializationBehavior = Runtime.Serialization.SerializationBehavior.IgnoreDefaultValue,
+			};
 		}
 		#endregion
 
@@ -105,7 +111,7 @@ namespace Zongsoft.Externals.Alimap
 			var response = await _http.SendAsync(request);
 
 			//将高德地图服务结果转换为结果描述
-			return this.GetSearchResult(response).FirstOrDefault();
+			return (await this.GetSearchResultAsync(response)).FirstOrDefault();
 		}
 
 		public async Task<IEnumerable<IDictionary<string, object>>> FindAsync(string tableId, string filter, int pageIndex = 1, int pageSize = 20)
@@ -136,7 +142,7 @@ namespace Zongsoft.Externals.Alimap
 			var response = await _http.SendAsync(request);
 
 			//将高德地图服务结果转换为结果描述
-			return this.GetSearchResult(response);
+			return await this.GetSearchResultAsync(response);
 		}
 
 		public async Task<AlimapResult> CreateTableAsync(string name)
@@ -172,7 +178,7 @@ namespace Zongsoft.Externals.Alimap
 				{ "key", _appId },
 				{ "tableid", tableId },
 				{ "loctype", coordinate == CoordinateType.None ? "2" : "1" },
-				{ "data", Runtime.Serialization.Serializer.Json.Serialize(data) },
+				{ "data", Runtime.Serialization.Serializer.Json.Serialize(data, _serializationSettings) },
 			});
 
 			//调用远程地图服务
@@ -190,13 +196,26 @@ namespace Zongsoft.Externals.Alimap
 			//处理数据映射关系
 			this.Mapping(data, coordinate, mappingString);
 
+			//获取更新操作的查询主键值的过滤条件
+			var filter = this.GetUpdateFilter(data, mappingString);
+
+			if(!string.IsNullOrEmpty(filter))
+			{
+				var dictionary = (await this.FindAsync(tableId, filter, 1, 1)).FirstOrDefault();
+
+				if(dictionary != null && dictionary.TryGetValue("_id", out var id))
+					data["_id"] = id;
+			}
+
+			Zongsoft.Diagnostics.Logger.Trace("UpdateDataAsync", data);
+
 			//构造请求消息
 			var request = this.CreateRequest(HttpMethod.Post, UPDATE_DATA_URL, new SortedDictionary<string, string>
 			{
 				{ "key", _appId },
 				{ "tableid", tableId },
 				{ "loctype", coordinate == CoordinateType.None ? "2" : "1" },
-				{ "data", Runtime.Serialization.Serializer.Json.Serialize(data) },
+				{ "data", Runtime.Serialization.Serializer.Json.Serialize(data, _serializationSettings) },
 			});
 
 			//调用远程地图服务
@@ -239,6 +258,19 @@ namespace Zongsoft.Externals.Alimap
 			string key;
 			object value;
 
+			var items = new List<string>();
+
+			foreach(var entry in data)
+			{
+				if(entry.Value == null)
+					items.Add(entry.Key);
+			}
+
+			foreach(var item in items)
+			{
+				data.Remove(item);
+			}
+
 			key = Utility.GetMapping(mappingString, KEY_ID_MAPPING);
 			if(key != null && data.TryGetValue(key, out value))
 				data["_id"] = value;
@@ -255,10 +287,34 @@ namespace Zongsoft.Externals.Alimap
 			var keyY = Utility.GetMapping(mappingString, KEY_LATITUDE_MAPPING, KEY_LATITUDE_MAPPING);
 
 			if(data.TryGetValue(keyX, out var longitude) && data.TryGetValue(keyY, out var latitude))
-				data["_location"] = string.Format("{0},{1}", longitude, latitude);
+				data["_location"] = string.Format("{0:0.000000},{1:0.000000}", longitude, latitude);
 
 			if(coordinate != CoordinateType.None)
 				data["coordtype"] = (int)coordinate;
+		}
+
+		public string GetUpdateFilter(IDictionary<string, object> data, string mappingString)
+		{
+			var keys = Utility.GetMapping(mappingString, KEY_ID_MAPPING);
+
+			if(string.IsNullOrEmpty(keys))
+				return null;
+
+			var filter = string.Empty;
+			var parts = keys.Split(',');
+
+			foreach(var part in parts)
+			{
+				if(data.TryGetValue(part.Trim(), out var value) && value != null)
+				{
+					if(filter != null && filter.Length > 0)
+						filter += "+";
+
+					filter += part + ":" + value;
+				}
+			}
+
+			return filter;
 		}
 
 		private AlimapResult GetResult<T>(HttpResponseMessage response) where T : ResponseResult
@@ -267,6 +323,8 @@ namespace Zongsoft.Externals.Alimap
 				return AlimapResult.Unknown;
 
 			var content = response.Content.ReadAsStringAsync().Result;
+
+			Zongsoft.Diagnostics.Logger.Trace("GetResult", (object)content);
 
 			if(string.IsNullOrEmpty(content))
 				return AlimapResult.Unknown;
@@ -279,22 +337,22 @@ namespace Zongsoft.Externals.Alimap
 				return result.ToResult();
 		}
 
-		private IEnumerable<IDictionary<string, object>> GetSearchResult(HttpResponseMessage response)
+		private async Task<IEnumerable<IDictionary<string, object>>> GetSearchResultAsync(HttpResponseMessage response)
 		{
 			if(response == null || response.Content == null)
 				return Enumerable.Empty<IDictionary<string, object>>();
 
-			var text = response.Content.ReadAsStringAsync().Result;
+			var text = await response.Content.ReadAsStringAsync();
 
 			if(!string.IsNullOrWhiteSpace(text))
 			{
 				var result = Zongsoft.Runtime.Serialization.Serializer.Json.Deserialize<SearchResult>(text);
 
 				if(result != null)
-					return result.datas;
+					return result.datas ?? Enumerable.Empty<IDictionary<string, object>>();
 			}
 
-			return System.Linq.Enumerable.Empty<IDictionary<string, object>>();
+			return Enumerable.Empty<IDictionary<string, object>>();
 		}
 
 		private HttpRequestMessage CreateRequest(HttpMethod method, string url, IDictionary<string, string> parameters)
@@ -327,7 +385,7 @@ namespace Zongsoft.Externals.Alimap
 
 			if(method == HttpMethod.Get)
 			{
-				return new HttpRequestMessage(method, url + "?" + string.Join("&", parts) + "&sin=" + signature);
+				return new HttpRequestMessage(method, url + "?" + string.Join("&", parts) + "&sig=" + signature);
 			}
 			else
 			{
