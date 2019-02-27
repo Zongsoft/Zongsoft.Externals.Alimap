@@ -161,7 +161,7 @@ namespace Zongsoft.Externals.Alimap
 			var response = await _http.SendAsync(request);
 
 			//将高德地图服务结果转换为结果描述
-			return this.GetResult<CreateTableResult>(response);
+			return await this.GetResult<CreateTableResult>(response);
 		}
 
 		public async Task<AlimapResult> CreateDataAsync(string tableId, IDictionary<string, object> data, string mappingString = null, CoordinateType coordinate = CoordinateType.GPS)
@@ -185,7 +185,7 @@ namespace Zongsoft.Externals.Alimap
 			var response = await _http.SendAsync(request);
 
 			//将高德地图服务结果转换为结果描述
-			return this.GetResult<CreateDataResult>(response);
+			return await this.GetResult<CreateDataResult>(response);
 		}
 
 		public async Task<AlimapResult> UpdateDataAsync(string tableId, IDictionary<string, object> data, string mappingString = null, CoordinateType coordinate = CoordinateType.GPS)
@@ -222,7 +222,7 @@ namespace Zongsoft.Externals.Alimap
 			var response = await _http.SendAsync(request);
 
 			//将高德地图服务结果转换为结果描述
-			return this.GetResult<ResponseResult>(response);
+			return await this.GetResult<ResponseResult>(response);
 		}
 
 		public async Task<AlimapResult> DeleteDataAsync(string tableId, string mark)
@@ -245,7 +245,7 @@ namespace Zongsoft.Externals.Alimap
 			var response = await _http.SendAsync(request);
 
 			//将高德地图服务结果转换为结果描述
-			return this.GetResult<DeleteDataResult>(response);
+			return await this.GetResult<DeleteDataResult>(response);
 		}
 		#endregion
 
@@ -258,17 +258,33 @@ namespace Zongsoft.Externals.Alimap
 			string key;
 			object value;
 
-			var items = new List<string>();
+			var removedKeys = new List<string>();
+			var changedEntries = new Dictionary<string, Func<object, object>>();
 
 			foreach(var entry in data)
 			{
 				if(entry.Value == null)
-					items.Add(entry.Key);
+					removedKeys.Add(entry.Key);
+				else if(entry.Value is bool)
+					changedEntries[entry.Key] = p => (bool)p ? 1 : 0;
+				else if(entry.Value is DateTime)
+					changedEntries[entry.Key] = p => Utility.GetTimestamp((DateTime)p);
+				else if(entry.Value is DateTimeOffset)
+					changedEntries[entry.Key] = p => ((DateTimeOffset)p).ToUnixTimeSeconds();
 			}
 
-			foreach(var item in items)
+			//删除为空的所有数据
+			if(removedKeys != null && removedKeys.Count > 0)
 			{
-				data.Remove(item);
+				foreach(var removedKey in removedKeys)
+					data.Remove(removedKey);
+			}
+
+			//转换特定类型的数据
+			if(changedEntries != null && changedEntries.Count > 0)
+			{
+				foreach(var changedEntry in changedEntries)
+					data[changedEntry.Key] = changedEntry.Value(data[changedEntry.Key]);
 			}
 
 			key = Utility.GetMapping(mappingString, KEY_ID_MAPPING);
@@ -317,12 +333,12 @@ namespace Zongsoft.Externals.Alimap
 			return filter;
 		}
 
-		private AlimapResult GetResult<T>(HttpResponseMessage response) where T : ResponseResult
+		private async Task<AlimapResult> GetResult<T>(HttpResponseMessage response) where T : ResponseResult
 		{
 			if(response == null || response.Content == null)
 				return AlimapResult.Unknown;
 
-			var content = response.Content.ReadAsStringAsync().Result;
+			var content = await response.Content.ReadAsStringAsync();
 
 			Zongsoft.Diagnostics.Logger.Trace("GetResult", (object)content);
 
