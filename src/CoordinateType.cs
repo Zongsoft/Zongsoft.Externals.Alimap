@@ -29,13 +29,25 @@ namespace Zongsoft.Externals.Alimap
 		/// <summary>未定义</summary>
 		None = 0,
 
+		/// <summary>地球坐标系(国际标准)</summary>
+		WGS84 = 1,
+
 		/// <summary>GPS坐标系</summary>
 		GPS = 1,
 
-		/// <summary>高德坐标系</summary>
-		Alimap,
+		/// <summary>火星坐标系</summary>
+		GCJ02 = 2,
 
 		/// <summary>百度坐标系</summary>
-		Baidu,
+		BD09 = 3,
+
+		/// <summary>高德地图（火星坐标系）</summary>
+		Alimap = 2,
+
+		/// <summary>腾讯地图（火星坐标系）</summary>
+		Tencent = 2,
+
+		/// <summary>百度地图（百度坐标系）</summary>
+		Baidu = 3,
 	}
 }
