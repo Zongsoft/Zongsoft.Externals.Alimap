@@ -271,6 +271,8 @@ namespace Zongsoft.Externals.Alimap
 					changedEntries[entry.Key] = p => Utility.GetTimestamp((DateTime)p);
 				else if(entry.Value is DateTimeOffset)
 					changedEntries[entry.Key] = p => ((DateTimeOffset)p).ToUnixTimeSeconds();
+				else if(entry.Value.GetType().IsEnum)
+					changedEntries[entry.Key] = p => Convert.ChangeType(p, Enum.GetUnderlyingType(p.GetType()));
 			}
 
 			//删除为空的所有数据
