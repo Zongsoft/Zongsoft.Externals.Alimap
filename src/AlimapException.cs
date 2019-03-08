@@ -21,31 +21,28 @@ using System;
 
 namespace Zongsoft.Externals.Alimap
 {
+	[Serializable]
 	public class AlimapException : ApplicationException
 	{
-		[Serializable]
-		public class AliyunException : ApplicationException
+		#region 成员字段
+		private int _code;
+		#endregion
+
+		#region 构造函数
+		public AlimapException(int code, string message = null) : base(message)
 		{
-			#region 成员字段
-			private int _code;
-			#endregion
-
-			#region 构造函数
-			private AliyunException(int code)
-			{
-				_code = code;
-			}
-			#endregion
-
-			#region 重写属性
-			public int Code
-			{
-				get
-				{
-					return _code;
-				}
-			}
-			#endregion
+			_code = code;
 		}
+		#endregion
+
+		#region 重写属性
+		public int Code
+		{
+			get
+			{
+				return _code;
+			}
+		}
+		#endregion
 	}
 }
