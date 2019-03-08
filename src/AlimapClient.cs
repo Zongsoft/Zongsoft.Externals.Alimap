@@ -39,7 +39,9 @@ namespace Zongsoft.Externals.Alimap
 		private const string BASE_SEARCH_URL = BASE_URL + "datasearch/";
 
 		private const string GET_URL = BASE_SEARCH_URL + "id";
-		private const string FIND_URL = BASE_MANAGE_URL + "data/list";
+		private const string SEARCH_AROUND_URL = BASE_SEARCH_URL + "around";
+		private const string SEARCH_POLYGON_URL = BASE_SEARCH_URL + "polygon";
+		private const string SEARCH_URL = BASE_MANAGE_URL + "data/list";
 
 		private const string CREATE_TABLE_URL = BASE_MANAGE_URL + "table/create";
 		private const string CREATE_DATA_URL = BASE_MANAGE_URL + "data/create";
@@ -71,7 +73,7 @@ namespace Zongsoft.Externals.Alimap
 
 			_serializationSettings = new Runtime.Serialization.TextSerializationSettings()
 			{
-				SerializationBehavior = Runtime.Serialization.SerializationBehavior.IgnoreDefaultValue,
+				SerializationBehavior = Runtime.Serialization.SerializationBehavior.IgnoreNullValue,
 			};
 		}
 		#endregion
@@ -114,7 +116,7 @@ namespace Zongsoft.Externals.Alimap
 			return (await this.GetSearchResultAsync(response)).FirstOrDefault();
 		}
 
-		public async Task<IEnumerable<IDictionary<string, object>>> FindAsync(string tableId, string filter, int pageIndex = 1, int pageSize = 20)
+		public async Task<IEnumerable<IDictionary<string, object>>> SearchAsync(string tableId, string filter = null, int pageIndex = 1, int pageSize = 20)
 		{
 			if(string.IsNullOrEmpty(tableId))
 				throw new ArgumentNullException(nameof(tableId));
@@ -136,7 +138,86 @@ namespace Zongsoft.Externals.Alimap
 				parameters.Add("filter", filter.Trim());
 
 			//构造请求消息
-			var request = this.CreateRequest(HttpMethod.Get, FIND_URL, parameters);
+			var request = this.CreateRequest(HttpMethod.Get, SEARCH_URL, parameters);
+
+			//调用远程地图服务
+			var response = await _http.SendAsync(request);
+
+			//将高德地图服务结果转换为结果描述
+			return await this.GetSearchResultAsync(response);
+		}
+
+		public async Task<IEnumerable<IDictionary<string, object>>> SearchAsync(string tableId, decimal longitude, decimal latitude, int radius = 3000, string filter = null, string keyword = null, int pageIndex = 1, int pageSize = 20)
+		{
+			if(string.IsNullOrEmpty(tableId))
+				throw new ArgumentNullException(nameof(tableId));
+
+			//确保半径为正数
+			radius = Math.Abs(radius);
+
+			if(pageSize < 1 || pageSize > 100)
+				pageSize = 20;
+
+			//构建查询请求的参数集
+			var parameters = new SortedDictionary<string, string>
+			{
+				{ "key", _appId },
+				{ "tableid", tableId },
+				{ "center", longitude.ToString("0.000000") + "," + latitude.ToString("0.000000")},
+				{ "radius", radius.ToString() },
+				{ "limit", pageSize.ToString() },
+				{ "page", Math.Max(pageIndex, 1).ToString() },
+			};
+
+			//如果指定了过滤条件则添加其到查询参数集中
+			if(!string.IsNullOrEmpty(filter))
+				parameters.Add("filter", filter.Trim());
+
+			//如果指定了关键字过滤条件则添加其到查询参数集中
+			if(!string.IsNullOrEmpty(keyword))
+				parameters.Add("keywords", keyword.Trim());
+
+			//构造请求消息
+			var request = this.CreateRequest(HttpMethod.Get, SEARCH_AROUND_URL, parameters);
+
+			//调用远程地图服务
+			var response = await _http.SendAsync(request);
+
+			//将高德地图服务结果转换为结果描述
+			return await this.GetSearchResultAsync(response);
+		}
+
+		public async Task<IEnumerable<IDictionary<string, object>>> SearchAsync(string tableId, string polygon, string filter = null, string keyword = null, int pageIndex = 1, int pageSize = 20)
+		{
+			if(string.IsNullOrEmpty(tableId))
+				throw new ArgumentNullException(nameof(tableId));
+
+			if(string.IsNullOrEmpty(polygon))
+				throw new ArgumentNullException(nameof(polygon));
+
+			if(pageSize < 1 || pageSize > 100)
+				pageSize = 20;
+
+			//构建查询请求的参数集
+			var parameters = new SortedDictionary<string, string>
+			{
+				{ "key", _appId },
+				{ "tableid", tableId },
+				{ "polygon", polygon},
+				{ "limit", pageSize.ToString() },
+				{ "page", Math.Max(pageIndex, 1).ToString() },
+			};
+
+			//如果指定了过滤条件则添加其到查询参数集中
+			if(!string.IsNullOrEmpty(filter))
+				parameters.Add("filter", filter.Trim());
+
+			//如果指定了关键字过滤条件则添加其到查询参数集中
+			if(!string.IsNullOrEmpty(keyword))
+				parameters.Add("keywords", keyword.Trim());
+
+			//构造请求消息
+			var request = this.CreateRequest(HttpMethod.Get, SEARCH_POLYGON_URL, parameters);
 
 			//调用远程地图服务
 			var response = await _http.SendAsync(request);
@@ -201,7 +282,7 @@ namespace Zongsoft.Externals.Alimap
 
 			if(!string.IsNullOrEmpty(filter))
 			{
-				var dictionary = (await this.FindAsync(tableId, filter, 1, 1)).FirstOrDefault();
+				var dictionary = (await this.SearchAsync(tableId, filter, 1, 1)).FirstOrDefault();
 
 				if(dictionary != null && dictionary.TryGetValue("_id", out var id))
 					data["_id"] = id;
@@ -362,12 +443,17 @@ namespace Zongsoft.Externals.Alimap
 
 			var text = await response.Content.ReadAsStringAsync();
 
-			if(!string.IsNullOrWhiteSpace(text))
+			if(!string.IsNullOrEmpty(text))
 			{
 				var result = Zongsoft.Runtime.Serialization.Serializer.Json.Deserialize<SearchResult>(text);
 
 				if(result != null)
+				{
+					if(result.status == 0)
+						throw new AlimapException(result.status, "[" + result.infocode + "]" + result.info);
+
 					return result.datas ?? Enumerable.Empty<IDictionary<string, object>>();
+				}
 			}
 
 			return Enumerable.Empty<IDictionary<string, object>>();
@@ -403,7 +489,7 @@ namespace Zongsoft.Externals.Alimap
 
 			if(method == HttpMethod.Get)
 			{
-				return new HttpRequestMessage(method, url + "?" + string.Join("&", parts) + "&sig=" + signature);
+				return new HttpRequestMessage(method, url + "?" + EncodeUrl(string.Join("&", parts)) + "&sig=" + signature);
 			}
 			else
 			{
@@ -412,6 +498,14 @@ namespace Zongsoft.Externals.Alimap
 					Content = new FormUrlEncodedContent(parameters)
 				};
 			}
+		}
+
+		private string EncodeUrl(string url)
+		{
+			if(url != null && url.Length > 0)
+				return url.Replace("+", "%2B");
+
+			return url;
 		}
 		#endregion
 
