@@ -24,11 +24,11 @@ namespace Zongsoft.Externals.Alimap
 {
 	internal static class Utility
 	{
-		private static readonly DateTime EPOCH = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+		private static readonly DateTime UNIX_EPOCH = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-		public static long GetTimestamp(DateTime timestamp)
+		public static long GetUnixTimestamp(DateTime timestamp)
 		{
-			return (long)(timestamp.ToUniversalTime() - EPOCH).TotalSeconds;
+			return (long)(timestamp.ToUniversalTime() - UNIX_EPOCH).TotalSeconds;
 		}
 
 		private static readonly IDictionary<string, IDictionary<string, string>> _mappingCache = new Dictionary<string, IDictionary<string, string>>();
