@@ -84,7 +84,7 @@ namespace Zongsoft.Externals.Alimap.Commands
 				if(!decimal.TryParse(parts[1], out var latitude))
 					throw new CommandOptionException(COMMAND_CENTER_OPTION, "Invalid latitude value of the center point.");
 
-				return Utility.ExecuteTask(() => client.SearchAsync(
+				return Utility.ExecuteTask(() => client.SearchAsync<IDictionary<string, object>>(
 					context.Expression.Options.GetValue<string>(COMMAND_TABLE_OPTION),
 					longitude, latitude,
 					context.Expression.Options.GetValue<int>(COMMAND_RADIUS_OPTION),
@@ -95,7 +95,7 @@ namespace Zongsoft.Externals.Alimap.Commands
 			}
 			else if(context.Expression.Options.Contains(COMMAND_POLYGON_OPTION))
 			{
-				return Utility.ExecuteTask(() => client.SearchAsync(
+				return Utility.ExecuteTask(() => client.SearchAsync<IDictionary<string, object>>(
 					context.Expression.Options.GetValue<string>(COMMAND_TABLE_OPTION),
 					context.Expression.Options.GetValue<string>(COMMAND_POLYGON_OPTION),
 					context.Expression.Arguments.Length > 0 ? context.Expression.Arguments[0] : string.Empty,
@@ -105,7 +105,7 @@ namespace Zongsoft.Externals.Alimap.Commands
 			}
 			else
 			{
-				return Utility.ExecuteTask(() => client.SearchAsync(
+				return Utility.ExecuteTask(() => client.SearchAsync<IDictionary<string, object>>(
 					context.Expression.Options.GetValue<string>(COMMAND_TABLE_OPTION),
 					context.Expression.Arguments.Length > 0 ? context.Expression.Arguments[0] : string.Empty,
 					context.Expression.Options.GetValue<int>(COMMAND_PAGEINDEX_OPTION),

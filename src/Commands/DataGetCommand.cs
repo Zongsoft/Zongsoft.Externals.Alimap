@@ -68,7 +68,7 @@ namespace Zongsoft.Externals.Alimap.Commands
 				if(!ulong.TryParse(context.Expression.Arguments[0], out id))
 					throw new CommandException(string.Format("Invalid '{0}' argument value, it must be a integer.", context.Expression.Arguments[0]));
 
-				return Utility.ExecuteTask(() => client.GetAsync(
+				return Utility.ExecuteTask(() => client.GetAsync<IDictionary<string, object>>(
 					context.Expression.Options.GetValue<string>(TABLE_COMMAND_OPTION), id));
 			}
 
@@ -81,7 +81,7 @@ namespace Zongsoft.Externals.Alimap.Commands
 				if(!ulong.TryParse(context.Expression.Arguments[i], out id))
 					throw new CommandException(string.Format("Invalid '{0}' argument value, it must be a integer.", context.Expression.Arguments[i]));
 
-				result[i] = Utility.ExecuteTask(() => client.GetAsync(
+				result[i] = Utility.ExecuteTask(() => client.GetAsync<IDictionary<string, object>>(
 					context.Expression.Options.GetValue<string>(TABLE_COMMAND_OPTION), id));
 			}
 

@@ -96,7 +96,27 @@ namespace Zongsoft.Externals.Alimap
 		#endregion
 
 		#region 公共方法
-		public async Task<IDictionary<string, object>> GetAsync(string tableId, ulong id)
+		public T Get<T>(string tableId, ulong id)
+		{
+			return Utility.ExecuteTask(() => this.GetAsync<T>(tableId, id));
+		}
+
+		public IEnumerable<T> Search<T>(string tableId, string filter = null, int pageIndex = 1, int pageSize = 20)
+		{
+			return Utility.ExecuteTask(() => this.SearchAsync<T>(tableId, filter, pageIndex, pageSize));
+		}
+
+		public IEnumerable<T> Search<T>(string tableId, decimal longitude, decimal latitude, int radius = 3000, string filter = null, string keyword = null, int pageIndex = 1, int pageSize = 20)
+		{
+			return Utility.ExecuteTask(() => this.SearchAsync<T>(tableId, longitude, latitude, radius, filter, keyword, pageIndex, pageSize));
+		}
+
+		public IEnumerable<T> Search<T>(string tableId, string polygon, string filter = null, string keyword = null, int pageIndex = 1, int pageSize = 20)
+		{
+			return Utility.ExecuteTask(() => this.SearchAsync<T>(tableId, polygon, filter, keyword, pageIndex, pageSize));
+		}
+
+		public async Task<T> GetAsync<T>(string tableId, ulong id)
 		{
 			if(string.IsNullOrEmpty(tableId))
 				throw new ArgumentNullException(nameof(tableId));
@@ -113,10 +133,10 @@ namespace Zongsoft.Externals.Alimap
 			var response = await _http.SendAsync(request);
 
 			//将高德地图服务结果转换为结果描述
-			return (await this.GetSearchResultAsync(response)).FirstOrDefault();
+			return (await this.GetSearchResultAsync<T>(response)).FirstOrDefault();
 		}
 
-		public async Task<IEnumerable<IDictionary<string, object>>> SearchAsync(string tableId, string filter = null, int pageIndex = 1, int pageSize = 20)
+		public async Task<IEnumerable<T>> SearchAsync<T>(string tableId, string filter = null, int pageIndex = 1, int pageSize = 20)
 		{
 			if(string.IsNullOrEmpty(tableId))
 				throw new ArgumentNullException(nameof(tableId));
@@ -144,10 +164,10 @@ namespace Zongsoft.Externals.Alimap
 			var response = await _http.SendAsync(request);
 
 			//将高德地图服务结果转换为结果描述
-			return await this.GetSearchResultAsync(response);
+			return await this.GetSearchResultAsync<T>(response);
 		}
 
-		public async Task<IEnumerable<IDictionary<string, object>>> SearchAsync(string tableId, decimal longitude, decimal latitude, int radius = 3000, string filter = null, string keyword = null, int pageIndex = 1, int pageSize = 20)
+		public async Task<IEnumerable<T>> SearchAsync<T>(string tableId, decimal longitude, decimal latitude, int radius = 3000, string filter = null, string keyword = null, int pageIndex = 1, int pageSize = 20)
 		{
 			if(string.IsNullOrEmpty(tableId))
 				throw new ArgumentNullException(nameof(tableId));
@@ -184,10 +204,10 @@ namespace Zongsoft.Externals.Alimap
 			var response = await _http.SendAsync(request);
 
 			//将高德地图服务结果转换为结果描述
-			return await this.GetSearchResultAsync(response);
+			return await this.GetSearchResultAsync<T>(response);
 		}
 
-		public async Task<IEnumerable<IDictionary<string, object>>> SearchAsync(string tableId, string polygon, string filter = null, string keyword = null, int pageIndex = 1, int pageSize = 20)
+		public async Task<IEnumerable<T>> SearchAsync<T>(string tableId, string polygon, string filter = null, string keyword = null, int pageIndex = 1, int pageSize = 20)
 		{
 			if(string.IsNullOrEmpty(tableId))
 				throw new ArgumentNullException(nameof(tableId));
@@ -223,7 +243,7 @@ namespace Zongsoft.Externals.Alimap
 			var response = await _http.SendAsync(request);
 
 			//将高德地图服务结果转换为结果描述
-			return await this.GetSearchResultAsync(response);
+			return await this.GetSearchResultAsync<T>(response);
 		}
 
 		public async Task<AlimapResult> CreateTableAsync(string name)
@@ -282,7 +302,7 @@ namespace Zongsoft.Externals.Alimap
 
 			if(!string.IsNullOrEmpty(filter))
 			{
-				var dictionary = (await this.SearchAsync(tableId, filter, 1, 1)).FirstOrDefault();
+				var dictionary = (await this.SearchAsync<IDictionary<string, object>>(tableId, filter, 1, 1)).FirstOrDefault();
 
 				if(dictionary != null && dictionary.TryGetValue("_id", out var id))
 					data["_id"] = id;
@@ -349,7 +369,7 @@ namespace Zongsoft.Externals.Alimap
 				else if(entry.Value is bool)
 					changedEntries[entry.Key] = p => (bool)p ? 1 : 0;
 				else if(entry.Value is DateTime)
-					changedEntries[entry.Key] = p => Utility.GetTimestamp((DateTime)p);
+					changedEntries[entry.Key] = p => Utility.GetUnixTimestamp((DateTime)p);
 				else if(entry.Value is DateTimeOffset)
 					changedEntries[entry.Key] = p => ((DateTimeOffset)p).ToUnixTimeSeconds();
 				else if(entry.Value.GetType().IsEnum)
@@ -436,27 +456,27 @@ namespace Zongsoft.Externals.Alimap
 				return result.ToResult();
 		}
 
-		private async Task<IEnumerable<IDictionary<string, object>>> GetSearchResultAsync(HttpResponseMessage response)
+		private async Task<IEnumerable<T>> GetSearchResultAsync<T>(HttpResponseMessage response)
 		{
 			if(response == null || response.Content == null)
-				return Enumerable.Empty<IDictionary<string, object>>();
+				return Enumerable.Empty<T>();
 
 			var text = await response.Content.ReadAsStringAsync();
 
 			if(!string.IsNullOrEmpty(text))
 			{
-				var result = Zongsoft.Runtime.Serialization.Serializer.Json.Deserialize<SearchResult>(text);
+				var result = Zongsoft.Runtime.Serialization.Serializer.Json.Deserialize<SearchResult<T>>(text);
 
 				if(result != null)
 				{
 					if(result.status == 0)
 						throw new AlimapException(result.status, "[" + result.infocode + "]" + result.info);
 
-					return result.datas ?? Enumerable.Empty<IDictionary<string, object>>();
+					return result.Datas ?? Enumerable.Empty<T>();
 				}
 			}
 
-			return Enumerable.Empty<IDictionary<string, object>>();
+			return Enumerable.Empty<T>();
 		}
 
 		private HttpRequestMessage CreateRequest(HttpMethod method, string url, IDictionary<string, string> parameters)
@@ -588,10 +608,10 @@ namespace Zongsoft.Externals.Alimap
 			}
 		}
 
-		private class SearchResult : ResponseResult
+		private class SearchResult<T> : ResponseResult
 		{
-			public int count;
-			public IDictionary<string, object>[] datas;
+			public int Count;
+			public T[] Datas;
 		}
 		#endregion
 	}
