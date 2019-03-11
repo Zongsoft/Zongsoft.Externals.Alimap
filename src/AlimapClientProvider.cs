@@ -18,22 +18,25 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
 
 namespace Zongsoft.Externals.Alimap
 {
 	public class AlimapClientProvider
 	{
+		#region 单例字段
+		public static readonly AlimapClientProvider Default = new AlimapClientProvider();
+		#endregion
+
 		#region 成员字段
 		private Options.IConfiguration _configuration;
-		private IDictionary<string, AlimapClient> _clients;
+		private readonly ConcurrentDictionary<string, AlimapClient> _clients;
 		#endregion
 
 		#region 构造函数
 		public AlimapClientProvider()
 		{
-			_clients = new Dictionary<string, AlimapClient>();
+			_clients = new ConcurrentDictionary<string, AlimapClient>();
 		}
 		#endregion
 
@@ -42,6 +45,9 @@ namespace Zongsoft.Externals.Alimap
 		{
 			get
 			{
+				if(_configuration == null)
+					_configuration = Zongsoft.Services.ApplicationContext.Current.Options.GetOptionValue("/Externals/Alimap/General") as Options.IConfiguration;
+
 				return _configuration;
 			}
 			set
@@ -54,31 +60,28 @@ namespace Zongsoft.Externals.Alimap
 		#region 公共方法
 		public AlimapClient Get(string appId)
 		{
-			var configuration = _configuration;
+			var configuration = this.Configuration ?? throw new InvalidOperationException("Missing configuration.");
 
 			if(string.IsNullOrEmpty(appId))
 			{
-				if(configuration == null)
-					throw new InvalidOperationException("Missing configuration.");
-
 				appId = configuration.Apps.Default;
 
 				if(string.IsNullOrEmpty(appId))
-					return null;
+					throw new ArgumentNullException(nameof(appId));
 			}
 
-			//从缓存中获取指定应用编号的地图客户端对象
-			if(_clients.TryGetValue(appId, out var client))
-				return client;
+			//返回获取或新建的地图客户端对象
+			return _clients.GetOrAdd(appId, key =>
+			{
+				//从配置中获取对应的应用秘钥
+				var secret = (string)configuration.Apps.GetValue(appId);
 
-			//从配置中获取对应的应用秘钥
-			var secret = (string)configuration.Apps.GetValue(appId);
+				//如果秘钥对象为空，则表示指定的应用编号是不存在的
+				if(secret == null)
+					throw new InvalidOperationException($"Specified '{key}' app of alimap is not existed.");
 
-			//如果秘钥对象为空，则表示指定的应用编号是不存在的
-			if(secret == null)
-				throw new InvalidOperationException($"Specified '{appId}' app of alimap is not existed.");
-
-			return _clients[appId] = new AlimapClient(appId, secret);
+				return new AlimapClient(key, secret);
+			});
 		}
 		#endregion
 	}
