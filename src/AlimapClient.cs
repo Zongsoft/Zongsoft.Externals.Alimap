@@ -1,8 +1,8 @@
 ﻿/*
  * Authors:
- *   钟峰(Popeye Zhong) <9555843@qq.com>
+ *   钟峰(Popeye Zhong) <zongsoft@qq.com>
  * 
- * Copyright (C) 2017 Zongsoft Corporation. All rights reserved.
+ * Copyright (C) 2017-2019 Zongsoft Corporation. All rights reserved.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 
 using System;
 using System.Linq;
+using System.Collections;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -28,6 +29,8 @@ namespace Zongsoft.Externals.Alimap
 	public class AlimapClient
 	{
 		#region 常量定义
+		private const int MAX_PAGE_SIZE = 100;
+
 		private const string KEY_ID_MAPPING = "Id";
 		private const string KEY_NAME_MAPPING = "Name";
 		private const string KEY_LONGITUDE_MAPPING = "Longitude";
@@ -41,7 +44,7 @@ namespace Zongsoft.Externals.Alimap
 		private const string GET_URL = BASE_SEARCH_URL + "id";
 		private const string SEARCH_AROUND_URL = BASE_SEARCH_URL + "around";
 		private const string SEARCH_POLYGON_URL = BASE_SEARCH_URL + "polygon";
-		private const string SEARCH_URL = BASE_MANAGE_URL + "data/list";
+		private const string SEARCH_SIMPLEX_URL = BASE_MANAGE_URL + "data/list";
 
 		private const string CREATE_TABLE_URL = BASE_MANAGE_URL + "table/create";
 		private const string CREATE_DATA_URL = BASE_MANAGE_URL + "data/create";
@@ -141,30 +144,33 @@ namespace Zongsoft.Externals.Alimap
 			if(string.IsNullOrEmpty(tableId))
 				throw new ArgumentNullException(nameof(tableId));
 
-			if(pageSize < 1 || pageSize > 100)
-				pageSize = 20;
-
-			//构建查询请求的参数集
-			var parameters = new SortedDictionary<string, string>
+			async Task<HttpResponseMessage> Fetch(int page)
 			{
-				{ "key", _appId },
-				{ "tableid", tableId },
-				{ "limit", pageSize.ToString() },
-				{ "page", Math.Max(pageIndex, 1).ToString() },
-			};
+				//构建查询请求的参数集
+				var parameters = new SortedDictionary<string, string>
+				{
+					{ "key", _appId },
+					{ "tableid", tableId },
+					{ "limit", GetPageSize(pageSize).ToString() },
+					{ "page", Math.Max(page, 1).ToString() },
+				};
 
-			//如果指定了过滤条件则添加其到查询参数集中
-			if(!string.IsNullOrEmpty(filter))
-				parameters.Add("filter", filter.Trim());
+				//如果指定了过滤条件则添加其到查询参数集中
+				if(!string.IsNullOrEmpty(filter))
+					parameters.Add("filter", filter.Trim());
 
-			//构造请求消息
-			var request = this.CreateRequest(HttpMethod.Get, SEARCH_URL, parameters);
+				//构造请求消息
+				var request = this.CreateRequest(HttpMethod.Get, SEARCH_SIMPLEX_URL, parameters);
 
-			//调用远程地图服务
-			var response = await _http.SendAsync(request);
+				//调用远程地图服务
+				return await _http.SendAsync(request);
+			}
 
-			//将高德地图服务结果转换为结果描述
-			return await this.GetSearchResultAsync<T>(response);
+			//将高德地图服务结果转换为结果实体集
+			if(pageSize > 0)
+				return await this.GetSearchResultAsync<T>(await Fetch(pageIndex));
+			else
+				return await this.GetSearchResultAsync<T>(await Fetch(pageIndex), GetPageSize(pageSize), page => Utility.ExecuteTask(() => Fetch(page)));
 		}
 
 		public async Task<IEnumerable<T>> SearchAsync<T>(string tableId, decimal longitude, decimal latitude, int radius = 3000, string filter = null, string keyword = null, int pageIndex = 1, int pageSize = 20)
@@ -175,75 +181,80 @@ namespace Zongsoft.Externals.Alimap
 			//确保半径为正数
 			radius = Math.Abs(radius);
 
-			if(pageSize < 1 || pageSize > 100)
-				pageSize = 20;
-
-			//构建查询请求的参数集
-			var parameters = new SortedDictionary<string, string>
+			async Task<HttpResponseMessage> Fetch(int page)
 			{
-				{ "key", _appId },
-				{ "tableid", tableId },
-				{ "center", longitude.ToString("0.000000") + "," + latitude.ToString("0.000000")},
-				{ "radius", radius.ToString() },
-				{ "limit", pageSize.ToString() },
-				{ "page", Math.Max(pageIndex, 1).ToString() },
-			};
+				//构建查询请求的参数集
+				var parameters = new SortedDictionary<string, string>
+				{
+					{ "key", _appId },
+					{ "tableid", tableId },
+					{ "center", longitude.ToString("0.000000") + "," + latitude.ToString("0.000000")},
+					{ "radius", radius.ToString() },
+					{ "limit", GetPageSize(pageSize).ToString() },
+					{ "page", Math.Max(page, 1).ToString() },
+				};
 
-			//如果指定了过滤条件则添加其到查询参数集中
-			if(!string.IsNullOrEmpty(filter))
-				parameters.Add("filter", filter.Trim());
+				//如果指定了过滤条件则添加其到查询参数集中
+				if(!string.IsNullOrEmpty(filter))
+					parameters.Add("filter", filter.Trim());
 
-			//如果指定了关键字过滤条件则添加其到查询参数集中
-			if(!string.IsNullOrEmpty(keyword))
-				parameters.Add("keywords", keyword.Trim());
+				//如果指定了关键字过滤条件则添加其到查询参数集中
+				if(!string.IsNullOrEmpty(keyword))
+					parameters.Add("keywords", keyword.Trim());
 
-			//构造请求消息
-			var request = this.CreateRequest(HttpMethod.Get, SEARCH_AROUND_URL, parameters);
+				//构造请求消息
+				var request = this.CreateRequest(HttpMethod.Get, SEARCH_AROUND_URL, parameters);
 
-			//调用远程地图服务
-			var response = await _http.SendAsync(request);
+				//调用远程地图服务
+				return await _http.SendAsync(request);
+			}
 
-			//将高德地图服务结果转换为结果描述
-			return await this.GetSearchResultAsync<T>(response);
+			//将高德地图服务结果转换为结果实体集
+			if(pageSize > 0)
+				return await this.GetSearchResultAsync<T>(await Fetch(pageIndex));
+			else
+				return await this.GetSearchResultAsync<T>(await Fetch(pageIndex), GetPageSize(pageSize), page => Utility.ExecuteTask(() => Fetch(page)));
 		}
 
 		public async Task<IEnumerable<T>> SearchAsync<T>(string tableId, string polygon, string filter = null, string keyword = null, int pageIndex = 1, int pageSize = 20)
 		{
 			if(string.IsNullOrEmpty(tableId))
 				throw new ArgumentNullException(nameof(tableId));
-
 			if(string.IsNullOrEmpty(polygon))
 				throw new ArgumentNullException(nameof(polygon));
 
-			if(pageSize < 1 || pageSize > 100)
-				pageSize = 20;
-
-			//构建查询请求的参数集
-			var parameters = new SortedDictionary<string, string>
+			async Task<HttpResponseMessage> Fetch(int page)
 			{
-				{ "key", _appId },
-				{ "tableid", tableId },
-				{ "polygon", polygon},
-				{ "limit", pageSize.ToString() },
-				{ "page", Math.Max(pageIndex, 1).ToString() },
-			};
+				//构建查询请求的参数集
+				var parameters = new SortedDictionary<string, string>
+				{
+					{ "key", _appId },
+					{ "tableid", tableId },
+					{ "polygon", polygon},
+					{ "limit", GetPageSize(pageSize).ToString() },
+					{ "page", Math.Max(page, 1).ToString() },
+				};
 
-			//如果指定了过滤条件则添加其到查询参数集中
-			if(!string.IsNullOrEmpty(filter))
-				parameters.Add("filter", filter.Trim());
+				//如果指定了过滤条件则添加其到查询参数集中
+				if(!string.IsNullOrEmpty(filter))
+					parameters.Add("filter", filter.Trim());
 
-			//如果指定了关键字过滤条件则添加其到查询参数集中
-			if(!string.IsNullOrEmpty(keyword))
-				parameters.Add("keywords", keyword.Trim());
+				//如果指定了关键字过滤条件则添加其到查询参数集中
+				if(!string.IsNullOrEmpty(keyword))
+					parameters.Add("keywords", keyword.Trim());
 
-			//构造请求消息
-			var request = this.CreateRequest(HttpMethod.Get, SEARCH_POLYGON_URL, parameters);
+				//构造请求消息
+				var request = this.CreateRequest(HttpMethod.Get, SEARCH_POLYGON_URL, parameters);
 
-			//调用远程地图服务
-			var response = await _http.SendAsync(request);
+				//调用远程地图服务
+				return await _http.SendAsync(request);
+			}
 
-			//将高德地图服务结果转换为结果描述
-			return await this.GetSearchResultAsync<T>(response);
+			//将高德地图服务结果转换为结果实体集
+			if(pageSize > 0)
+				return await this.GetSearchResultAsync<T>(await Fetch(pageIndex));
+			else
+				return await this.GetSearchResultAsync<T>(await Fetch(pageIndex), GetPageSize(pageSize), page => Utility.ExecuteTask(() => Fetch(page)));
 		}
 
 		public async Task<AlimapResult> CreateTableAsync(string name)
@@ -351,6 +362,12 @@ namespace Zongsoft.Externals.Alimap
 		#endregion
 
 		#region 私有方法
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		private static int GetPageSize(int pageSize)
+		{
+			return pageSize > 0 && pageSize <= MAX_PAGE_SIZE ? pageSize : MAX_PAGE_SIZE;
+		}
+
 		private void Mapping(IDictionary<string, object> data, CoordinateType coordinate, string mappingString)
 		{
 			if(data == null || string.IsNullOrWhiteSpace(mappingString))
@@ -436,49 +453,6 @@ namespace Zongsoft.Externals.Alimap
 			return filter;
 		}
 
-		private async Task<AlimapResult> GetResult<T>(HttpResponseMessage response) where T : ResponseResult
-		{
-			if(response == null || response.Content == null)
-				return AlimapResult.Unknown;
-
-			var content = await response.Content.ReadAsStringAsync();
-
-			Zongsoft.Diagnostics.Logger.Trace("GetResult", (object)content);
-
-			if(string.IsNullOrEmpty(content))
-				return AlimapResult.Unknown;
-
-			var result = Zongsoft.Runtime.Serialization.Serializer.Json.Deserialize<T>(content);
-
-			if(result == null)
-				return AlimapResult.Unknown;
-			else
-				return result.ToResult();
-		}
-
-		private async Task<IEnumerable<T>> GetSearchResultAsync<T>(HttpResponseMessage response)
-		{
-			if(response == null || response.Content == null)
-				return Enumerable.Empty<T>();
-
-			var text = await response.Content.ReadAsStringAsync();
-
-			if(!string.IsNullOrEmpty(text))
-			{
-				var result = Zongsoft.Runtime.Serialization.Serializer.Json.Deserialize<SearchResult<T>>(text);
-
-				if(result != null)
-				{
-					if(result.status == 0)
-						throw new AlimapException(result.status, "[" + result.infocode + "]" + result.info);
-
-					return result.Datas ?? Enumerable.Empty<T>();
-				}
-			}
-
-			return Enumerable.Empty<T>();
-		}
-
 		private HttpRequestMessage CreateRequest(HttpMethod method, string url, IDictionary<string, string> parameters)
 		{
 			if(parameters == null)
@@ -527,30 +501,76 @@ namespace Zongsoft.Externals.Alimap
 
 			return url;
 		}
+
+		private async Task<AlimapResult> GetResult<T>(HttpResponseMessage response) where T : ResponseResult
+		{
+			if(response == null || response.Content == null)
+				return AlimapResult.Unknown;
+
+			var content = await response.Content.ReadAsStringAsync();
+
+			Zongsoft.Diagnostics.Logger.Trace("GetResult", (object)content);
+
+			if(string.IsNullOrEmpty(content))
+				return AlimapResult.Unknown;
+
+			var result = Zongsoft.Runtime.Serialization.Serializer.Json.Deserialize<T>(content);
+
+			if(result == null)
+				return AlimapResult.Unknown;
+			else
+				return result.ToResult();
+		}
+
+		private async Task<IEnumerable<T>> GetSearchResultAsync<T>(HttpResponseMessage response, int pageSize = 0, Func<int, HttpResponseMessage> next = null)
+		{
+			if(response == null || response.Content == null)
+				return Enumerable.Empty<T>();
+
+			var text = await response.Content.ReadAsStringAsync();
+
+			if(!string.IsNullOrEmpty(text))
+			{
+				var result = Zongsoft.Runtime.Serialization.Serializer.Json.Deserialize<SearchResult<T>>(text);
+
+				if(result != null)
+				{
+					if(result.Status == 0)
+						throw new AlimapException(result.Status, "[" + result.InfoCode + "]" + result.Info);
+
+					if(pageSize > 0 && next != null && result.Count > pageSize)
+						return new SearchResultEnumerable<T>(pageSize, result, next);
+
+					return result.Datas ?? Enumerable.Empty<T>();
+				}
+			}
+
+			return Enumerable.Empty<T>();
+		}
 		#endregion
 
 		#region 嵌套子类
 		private class ResponseResult
 		{
-			public int status;
-			public string info;
-			public string infocode;
+			public int Status;
+			public string Info;
+			public string InfoCode;
 
 			public virtual AlimapResult ToResult()
 			{
-				var code = status == 1 ? 0 : (status == 0 ? 1 : status);
-				return new AlimapResult(code, infocode, info);
+				var code = Status == 1 ? 0 : (Status == 0 ? 1 : Status);
+				return new AlimapResult(code, InfoCode, Info);
 			}
 		}
 
 		private class CreateTableResult : ResponseResult
 		{
-			public string tableid;
+			public string TableId;
 
 			public override AlimapResult ToResult()
 			{
 				var result = base.ToResult();
-				result.Value = tableid;
+				result.Value = TableId;
 				return result;
 			}
 		}
@@ -569,41 +589,41 @@ namespace Zongsoft.Externals.Alimap
 
 		private class DeleteDataResult : ResponseResult
 		{
-			public int success;
-			public int fail;
+			public int Success;
+			public int Fail;
 
 			public override AlimapResult ToResult()
 			{
 				var result = base.ToResult();
-				result.Value = success.ToString();
+				result.Value = Success.ToString();
 				return result;
 			}
 		}
 
 		private class ImportDataResult : ResponseResult
 		{
-			public string batchid;
+			public string BatchId;
 
 			public override AlimapResult ToResult()
 			{
 				var result = base.ToResult();
-				result.Value = batchid;
+				result.Value = BatchId;
 				return result;
 			}
 		}
 
 		private class ImportProgressResult : ResponseResult
 		{
-			public int progress;
-			public int imported;
-			public int locaccurate;
-			public int locinaccurate;
-			public int locfail;
+			public int Progress;
+			public int Imported;
+			public int LocAccurate;
+			public int LocInaccurate;
+			public int LocFail;
 
 			public override AlimapResult ToResult()
 			{
 				var result = base.ToResult();
-				result.Value = progress.ToString();
+				result.Value = Progress.ToString();
 				return result;
 			}
 		}
@@ -612,6 +632,113 @@ namespace Zongsoft.Externals.Alimap
 		{
 			public int Count;
 			public T[] Datas;
+		}
+
+		private class SearchResultEnumerable<T> : IEnumerable<T>
+		{
+			#region 成员字段
+			private int _pageSize;
+			private SearchResult<T> _entity;
+			private Func<int, HttpResponseMessage> _next;
+			#endregion
+
+			#region 构造函数
+			public SearchResultEnumerable(int pageSize, SearchResult<T> result, Func<int, HttpResponseMessage> next)
+			{
+				_pageSize = pageSize;
+				_entity = result;
+				_next = next;
+			}
+			#endregion
+
+			#region 公共方法
+			public IEnumerator<T> GetEnumerator()
+			{
+				return new SearchResultIterator(_pageSize, _entity.Datas, _next);
+			}
+
+			IEnumerator IEnumerable.GetEnumerator()
+			{
+				return this.GetEnumerator();
+			}
+			#endregion
+
+			#region 嵌套子类
+			private class SearchResultIterator : IEnumerator<T>
+			{
+				private int _index;
+				private int _pageIndex;
+				private int _pageSize;
+				private T[] _items;
+				private Func<int, HttpResponseMessage> _next;
+
+				public SearchResultIterator(int pageSize, T[] items, Func<int, HttpResponseMessage> next)
+				{
+					_index = -1;
+					_pageIndex = 1;
+					_pageSize = pageSize;
+					_items = items;
+					_next = next;
+				}
+
+				public T Current
+				{
+					get
+					{
+						if(_index >= 0 && _index < _items.Length)
+							return _items[_index];
+
+						throw new IndexOutOfRangeException();
+					}
+				}
+
+				object IEnumerator.Current
+				{
+					get => this.Current;
+				}
+
+				public bool MoveNext()
+				{
+					_index++;
+
+					if(_index >= _items.Length && _pageSize > 0)
+					{
+						var response = _next(++_pageIndex);
+
+						if(response != null && response.IsSuccessStatusCode && response.Content != null)
+						{
+							var text = Utility.ExecuteTask(() => response.Content.ReadAsStringAsync());
+							var result = Zongsoft.Runtime.Serialization.Serializer.Json.Deserialize<SearchResult<T>>(text);
+
+							if(result != null && result.Datas != null && result.Datas.Length > 0)
+							{
+								//如果返回的数据量小于页大小则说明没有后续数据了，即清零页大小以示不用再进行后续查找了
+								if(result.Datas.Length < _pageSize)
+									_pageSize = 0;
+
+								_index = 0;
+								_items = result.Datas;
+							}
+						}
+					}
+
+					return _index < _items.Length;
+				}
+
+				public void Reset()
+				{
+					_index = -1;
+					_pageIndex = 1;
+				}
+
+				public void Dispose()
+				{
+					_index = -1;
+					_items = null;
+					_next = null;
+				}
+			}
+			#endregion
 		}
 		#endregion
 	}
