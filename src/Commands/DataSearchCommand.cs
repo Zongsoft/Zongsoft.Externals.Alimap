@@ -68,9 +68,6 @@ namespace Zongsoft.Externals.Alimap.Commands
 			if(client == null)
 				return null;
 
-			if(context.Expression.Arguments.Length != 1)
-				throw new CommandException("The command count of arguments must be zero.");
-
 			if(context.Expression.Options.Contains(COMMAND_CENTER_OPTION))
 			{
 				var parts = context.Expression.Options.GetValue<string>(COMMAND_CENTER_OPTION).Split(',', ';', '|');
