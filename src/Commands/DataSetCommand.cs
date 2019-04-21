@@ -65,11 +65,13 @@ namespace Zongsoft.Externals.Alimap.Commands
 			if(client == null)
 				return null;
 
-			return Utility.ExecuteTask(() => client.UpdateDataAsync(
+			client.UpdateDataAsync(
 				context.Expression.Options.GetValue<string>(TABLE_COMMAND_OPTION),
 				context.Parameter as IDictionary<string, object>,
 				context.Expression.Options.GetValue<string>(MAPPING_COMMAND_OPTION),
-				context.Expression.Options.GetValue<CoordinateType>(COORDINATE_COMMAND_OPTION)));
+				context.Expression.Options.GetValue<CoordinateType>(COORDINATE_COMMAND_OPTION)).Wait();
+
+			return null;
 		}
 		#endregion
 	}

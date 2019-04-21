@@ -59,7 +59,7 @@ namespace Zongsoft.Externals.Alimap.Commands
 			if(client == null)
 				return null;
 
-			var result = new AlimapResult[context.Expression.Arguments.Length];
+			var result = new string[context.Expression.Arguments.Length];
 
 			for(int i = 0; i < context.Expression.Arguments.Length; i++)
 			{
