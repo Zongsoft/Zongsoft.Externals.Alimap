@@ -257,7 +257,7 @@ namespace Zongsoft.Externals.Alimap
 				return await this.GetSearchResultAsync<T>(await Fetch(pageIndex), GetPageSize(pageSize), page => Utility.ExecuteTask(() => Fetch(page)));
 		}
 
-		public async Task<AlimapResult> CreateTableAsync(string name)
+		public async Task<string> CreateTableAsync(string name)
 		{
 			if(string.IsNullOrEmpty(name))
 				throw new ArgumentNullException(nameof(name));
@@ -273,10 +273,10 @@ namespace Zongsoft.Externals.Alimap
 			var response = await _http.SendAsync(request);
 
 			//将高德地图服务结果转换为结果描述
-			return await this.GetResult<CreateTableResult>(response);
+			return (string)await this.GetResult<CreateTableResult>(response);
 		}
 
-		public async Task<AlimapResult> CreateDataAsync(string tableId, IDictionary<string, object> data, string mappingString = null, CoordinateType coordinate = CoordinateType.GPS)
+		public async Task<string> CreateDataAsync(string tableId, IDictionary<string, object> data, string mappingString = null, CoordinateType coordinate = CoordinateType.GPS)
 		{
 			if(string.IsNullOrEmpty(tableId))
 				throw new ArgumentNullException(nameof(tableId));
@@ -297,10 +297,10 @@ namespace Zongsoft.Externals.Alimap
 			var response = await _http.SendAsync(request);
 
 			//将高德地图服务结果转换为结果描述
-			return await this.GetResult<CreateDataResult>(response);
+			return (string)await this.GetResult<CreateDataResult>(response);
 		}
 
-		public async Task<AlimapResult> UpdateDataAsync(string tableId, IDictionary<string, object> data, string mappingString = null, CoordinateType coordinate = CoordinateType.GPS)
+		public async Task UpdateDataAsync(string tableId, IDictionary<string, object> data, string mappingString = null, CoordinateType coordinate = CoordinateType.GPS)
 		{
 			if(string.IsNullOrEmpty(tableId))
 				throw new ArgumentNullException(nameof(tableId));
@@ -333,17 +333,17 @@ namespace Zongsoft.Externals.Alimap
 			//调用远程地图服务
 			var response = await _http.SendAsync(request);
 
-			//将高德地图服务结果转换为结果描述
-			return await this.GetResult<ResponseResult>(response);
+			//将高德地图服务结果转换为结果描述（如果失败则抛出异常）
+			await this.GetResult<ResponseResult>(response);
 		}
 
-		public async Task<AlimapResult> DeleteDataAsync(string tableId, string mark)
+		public async Task<int> DeleteDataAsync(string tableId, string mark)
 		{
 			if(string.IsNullOrEmpty(tableId))
 				throw new ArgumentNullException(nameof(tableId));
 
 			if(string.IsNullOrEmpty(mark))
-				return new AlimapResult(0, "INVALID-IDS", "Missing arguments.");
+				throw new ArgumentNullException(nameof(mark));
 
 			//构造请求消息
 			var request = this.CreateRequest(HttpMethod.Post, DELETE_DATA_URL, new SortedDictionary<string, string>
@@ -357,7 +357,7 @@ namespace Zongsoft.Externals.Alimap
 			var response = await _http.SendAsync(request);
 
 			//将高德地图服务结果转换为结果描述
-			return await this.GetResult<DeleteDataResult>(response);
+			return (int)await this.GetResult<DeleteDataResult>(response);
 		}
 		#endregion
 
@@ -502,24 +502,23 @@ namespace Zongsoft.Externals.Alimap
 			return url;
 		}
 
-		private async Task<AlimapResult> GetResult<T>(HttpResponseMessage response) where T : ResponseResult
+		private async Task<object> GetResult<T>(HttpResponseMessage response) where T : ResponseResult
 		{
 			if(response == null || response.Content == null)
-				return AlimapResult.Unknown;
+				throw new AlimapException($"No response context, the status code is '{response.StatusCode.ToString()}'.");
 
 			var content = await response.Content.ReadAsStringAsync();
 
-			Zongsoft.Diagnostics.Logger.Trace("GetResult", (object)content);
-
 			if(string.IsNullOrEmpty(content))
-				return AlimapResult.Unknown;
+				throw new AlimapException($"No response context, the status code is '{response.StatusCode.ToString()}'.");
 
-			var result = Zongsoft.Runtime.Serialization.Serializer.Json.Deserialize<T>(content);
+			var result = Runtime.Serialization.Serializer.Json.Deserialize<T>(content) ??
+			             throw new AlimapException("Invalid response content, the original response content is:" + Environment.NewLine + content);
 
-			if(result == null)
-				return AlimapResult.Unknown;
-			else
-				return result.ToResult();
+			if(result.Succeed)
+				return result.GetValue();
+
+			throw new AlimapException(result.Status, content);
 		}
 
 		private async Task<IEnumerable<T>> GetSearchResultAsync<T>(HttpResponseMessage response, int pageSize = 0, Func<int, HttpResponseMessage> next = null)
@@ -531,7 +530,7 @@ namespace Zongsoft.Externals.Alimap
 
 			if(!string.IsNullOrEmpty(text))
 			{
-				var result = Zongsoft.Runtime.Serialization.Serializer.Json.Deserialize<SearchResult<T>>(text);
+				var result = Runtime.Serialization.Serializer.Json.Deserialize<SearchResult<T>>(text);
 
 				if(result != null)
 				{
@@ -550,16 +549,20 @@ namespace Zongsoft.Externals.Alimap
 		#endregion
 
 		#region 嵌套子类
-		private class ResponseResult
+		private abstract class ResponseResult
 		{
 			public int Status;
 			public string Info;
 			public string InfoCode;
 
-			public virtual AlimapResult ToResult()
+			public bool Succeed
 			{
-				var code = Status == 1 ? 0 : (Status == 0 ? 1 : Status);
-				return new AlimapResult(code, InfoCode, Info);
+				get => this.Status == 1;
+			}
+
+			internal protected virtual object GetValue()
+			{
+				return this.Status == 1 ? 0 : (this.Status == 0 ? 1 : Status);
 			}
 		}
 
@@ -567,11 +570,9 @@ namespace Zongsoft.Externals.Alimap
 		{
 			public string TableId;
 
-			public override AlimapResult ToResult()
+			internal protected override object GetValue()
 			{
-				var result = base.ToResult();
-				result.Value = TableId;
-				return result;
+				return this.TableId;
 			}
 		}
 
@@ -579,11 +580,9 @@ namespace Zongsoft.Externals.Alimap
 		{
 			public string _id;
 
-			public override AlimapResult ToResult()
+			protected internal override object GetValue()
 			{
-				var result = base.ToResult();
-				result.Value = _id;
-				return result;
+				return _id;
 			}
 		}
 
@@ -592,11 +591,9 @@ namespace Zongsoft.Externals.Alimap
 			public int Success;
 			public int Fail;
 
-			public override AlimapResult ToResult()
+			protected internal override object GetValue()
 			{
-				var result = base.ToResult();
-				result.Value = Success.ToString();
-				return result;
+				return this.Success;
 			}
 		}
 
@@ -604,11 +601,9 @@ namespace Zongsoft.Externals.Alimap
 		{
 			public string BatchId;
 
-			public override AlimapResult ToResult()
+			protected internal override object GetValue()
 			{
-				var result = base.ToResult();
-				result.Value = BatchId;
-				return result;
+				return this.BatchId;
 			}
 		}
 
@@ -620,11 +615,9 @@ namespace Zongsoft.Externals.Alimap
 			public int LocInaccurate;
 			public int LocFail;
 
-			public override AlimapResult ToResult()
+			protected internal override object GetValue()
 			{
-				var result = base.ToResult();
-				result.Value = Progress.ToString();
-				return result;
+				return this.Progress;
 			}
 		}
 
@@ -632,6 +625,11 @@ namespace Zongsoft.Externals.Alimap
 		{
 			public int Count;
 			public T[] Datas;
+
+			protected internal override object GetValue()
+			{
+				return this.Datas;
+			}
 		}
 
 		private class SearchResultEnumerable<T> : IEnumerable<T>

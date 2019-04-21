@@ -18,30 +18,46 @@
  */
 
 using System;
+using System.Runtime.Serialization;
 
 namespace Zongsoft.Externals.Alimap
 {
 	[Serializable]
 	public class AlimapException : ApplicationException
 	{
-		#region 成员字段
-		private int _code;
-		#endregion
-
 		#region 构造函数
-		public AlimapException(int code, string message = null) : base(message)
+		public AlimapException(string message, Exception innerException = null) : base(message, innerException)
 		{
-			_code = code;
+		}
+
+		public AlimapException(int code, string message, Exception innerException = null) : base(message, innerException)
+		{
+			this.Code = code;
+		}
+
+		protected AlimapException(SerializationInfo info, StreamingContext context) : base(info, context)
+		{
+			this.Code = info.GetInt32(nameof(this.Code));
 		}
 		#endregion
 
 		#region 重写属性
+		/// <summary>
+		/// 获取高德API返回的错误状态码。
+		/// </summary>
 		public int Code
 		{
-			get
-			{
-				return _code;
-			}
+			get;
+		}
+		#endregion
+
+		#region 重写方法
+		public override void GetObjectData(SerializationInfo info, StreamingContext context)
+		{
+			info.AddValue(nameof(this.Code), this.Code);
+
+			//返回基类同名方法
+			base.GetObjectData(info, context);
 		}
 		#endregion
 	}
