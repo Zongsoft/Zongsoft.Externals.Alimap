@@ -41,7 +41,6 @@
   <ItemGroup>
     <Compile Include="AlimapClientProvider.cs" />
     <Compile Include="AlimapException.cs" />
-    <Compile Include="AlimapResult.cs" />
     <Compile Include="Commands\DataSearchCommand.cs" />
     <Compile Include="Commands\TableAddCommand.cs" />
     <Compile Include="Commands\DataRemoveCommand.cs" />
