@@ -281,6 +281,9 @@ namespace Zongsoft.Externals.Alimap
 			if(string.IsNullOrEmpty(tableId))
 				throw new ArgumentNullException(nameof(tableId));
 
+			if(data == null)
+				throw new ArgumentNullException(nameof(data));
+
 			//处理数据映射关系
 			this.Mapping(data, coordinate, mappingString);
 
@@ -304,6 +307,9 @@ namespace Zongsoft.Externals.Alimap
 		{
 			if(string.IsNullOrEmpty(tableId))
 				throw new ArgumentNullException(nameof(tableId));
+
+			if(data == null)
+				throw new ArgumentNullException(nameof(data));
 
 			//处理数据映射关系
 			this.Mapping(data, coordinate, mappingString);
@@ -549,7 +555,7 @@ namespace Zongsoft.Externals.Alimap
 		#endregion
 
 		#region 嵌套子类
-		private abstract class ResponseResult
+		private class ResponseResult
 		{
 			public int Status;
 			public string Info;
