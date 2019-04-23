@@ -325,8 +325,6 @@ namespace Zongsoft.Externals.Alimap
 					data["_id"] = id;
 			}
 
-			Zongsoft.Diagnostics.Logger.Trace("UpdateDataAsync", data);
-
 			//构造请求消息
 			var request = this.CreateRequest(HttpMethod.Post, UPDATE_DATA_URL, new SortedDictionary<string, string>
 			{
@@ -511,7 +509,7 @@ namespace Zongsoft.Externals.Alimap
 		private async Task<object> GetResult<T>(HttpResponseMessage response) where T : ResponseResult
 		{
 			if(response == null || response.Content == null)
-				throw new AlimapException($"No response context, the status code is '{response.StatusCode.ToString()}'.");
+				return null;
 
 			var content = await response.Content.ReadAsStringAsync();
 
