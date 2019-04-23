@@ -70,7 +70,7 @@ namespace Zongsoft.Externals.Alimap.Commands
 				context.Expression.Options.GetValue<string>(TABLE_COMMAND_OPTION),
 				context.Parameter as IDictionary<string, object>,
 				context.Expression.Options.GetValue<string>(MAPPING_COMMAND_OPTION),
-				context.Expression.Options.GetValue<CoordinateType>(COORDINATE_COMMAND_OPTION)).Wait();
+				context.Expression.Options.GetValue<CoordinateType>(COORDINATE_COMMAND_OPTION)).Wait(TimeSpan.FromSeconds(10));
 
 			return null;
 		}
