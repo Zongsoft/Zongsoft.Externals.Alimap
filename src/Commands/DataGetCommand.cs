@@ -24,8 +24,8 @@ using Zongsoft.Services;
 
 namespace Zongsoft.Externals.Alimap.Commands
 {
-	[CommandOption(APP_COMMAND_OPTION, typeof(string), Description = "${Text.CommandOption.App.Description}")]
-	[CommandOption(TABLE_COMMAND_OPTION, typeof(string), Description = "${Text.CommandOption.Table.Description}")]
+	[CommandOption(APP_COMMAND_OPTION, typeof(string), Required = true, Description = "${Text.CommandOption.App.Description}")]
+	[CommandOption(TABLE_COMMAND_OPTION, typeof(string), Required = true, Description = "${Text.CommandOption.Table.Description}")]
 	public class DataGetCommand : CommandBase<CommandContext>
 	{
 		#region 常量定义
@@ -55,11 +55,12 @@ namespace Zongsoft.Externals.Alimap.Commands
 			if(provider == null)
 				throw new CommandException("No found the alimap provider for the command.");
 
-			//获取指定应用编号对应的地图客户端
-			var client = provider.Get(context.Expression.Options.GetValue<string>(APP_COMMAND_OPTION));
+			//获取指定的应用编号参数
+			var appId = context.Expression.Options.GetValue<string>(APP_COMMAND_OPTION);
 
-			if(client == null)
-				return null;
+			//获取指定应用编号对应的地图客户端
+			var client = provider.Get(appId) ??
+				throw new CommandException($"The alimap-client of the specified '{appId}' appId does not exist or is undefined.");
 
 			if(context.Expression.Arguments.Length == 1)
 			{

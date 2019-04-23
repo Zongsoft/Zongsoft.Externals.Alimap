@@ -62,11 +62,12 @@ namespace Zongsoft.Externals.Alimap.Commands
 			if(provider == null)
 				throw new CommandException("No found the alimap provider for the command.");
 
-			//获取指定应用编号对应的地图客户端
-			var client = provider.Get(context.Expression.Options.GetValue<string>(COMMAND_APP_OPTION));
+			//获取指定的应用编号参数
+			var appId = context.Expression.Options.GetValue<string>(COMMAND_APP_OPTION);
 
-			if(client == null)
-				return null;
+			//获取指定应用编号对应的地图客户端
+			var client = provider.Get(appId) ??
+				throw new CommandException($"The alimap-client of the specified '{appId}' appId does not exist or is undefined.");
 
 			if(context.Expression.Options.Contains(COMMAND_CENTER_OPTION))
 			{
