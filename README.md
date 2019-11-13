@@ -1,4 +1,11 @@
 ﻿# Zongsoft.Externals.Alimap
+
+![license](https://img.shields.io/github/license/Zongsoft/Zongsoft.Externals.Alimap) ![download](https://img.shields.io/nuget/dt/Zongsoft.Externals.Alimap) ![version](https://img.shields.io/github/v/release/Zongsoft/Zongsoft.Externals.Alimap?include_prereleases) ![github stars](https://img.shields.io/github/stars/Zongsoft/Zongsoft.Externals.Alimap?style=social)
+
+README: [English](https://github.com/Zongsoft/Zongsoft.Externals.Alimap/blob/master/README.md) | [简体中文](https://github.com/Zongsoft/Zongsoft.Externals.Alimap/blob/master/README-zh_CN.md)
+
+-----
+
 关于阿里地图(高德云图)服务的扩展开发包。
 
 
